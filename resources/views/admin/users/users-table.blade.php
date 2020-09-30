@@ -1,7 +1,7 @@
 <div>
     <div class="flex justify-between items-center">
         <div class="flex flex-row mb-1 sm:mb-0">
-            <button class="inline-flex items-center justify-center px-4 py-2 text-base leading-5 rounded-md border font-medium shadow-sm transition ease-in-out duration-150 focus:outline-none focus:shadow-outline bg-green-600 border-green-600 text-gray-100 hover:bg-green-500 hover:border-green-500 hover:text-gray-100 focus:outline-none">
+            <button wire:click="createUser" class="inline-flex items-center justify-center px-4 py-2 text-base leading-5 rounded-md border font-medium shadow-sm transition ease-in-out duration-150 focus:outline-none focus:shadow-outline bg-green-600 border-green-600 text-gray-100 hover:bg-green-500 hover:border-green-500 hover:text-gray-100 focus:outline-none">
                 <i class="fas fa-plus"></i> <span class="px-2 font-semibold">Add User</span>
             </button>
         </div>
@@ -36,7 +36,6 @@
         </div>
     </div>
     
-    {{-- <div class="px-3 py-4 flex justify-center"> --}}
     <div class="-mx-4 sm:-mx-8 px-4 sm:px-8 py-4 overflow-x-auto">
         <table class="w-full text-md bg-white shadow-md rounded mb-4">
             <thead>
@@ -52,7 +51,7 @@
                 @foreach ($users as $user)
                     <tr class="border-b hover:bg-orange-100 {{ ($loop->odd) ? "bg-gray-100" : "" }}">
                         <td class="p-3 px-5"><input type="text" value="{{ $user->name }}" class="bg-transparent"></td>
-                        <td class="p-3 px-5"><input type="text" value="{{ $user->email }}" class="bg-transparent"></td>
+                        <td class="p-3 px-5"><input type="text" value="{{ $user->email }}" class="bg-transparent w-full"></td>
                         <td class="p-3 px-5">{{ $user->created_at->format('d-M-Y') }}</td>
                         <td class="p-3 px-5">
                             <select value="user.role" class="bg-transparent">
@@ -61,8 +60,8 @@
                             </select>
                         </td>
                         <td class="p-3 px-5 flex justify-end">
-                            <button type="button" class="mr-3 text-sm bg-blue-500 hover:bg-blue-700 text-white py-1 px-2 rounded focus:outline-none focus:shadow-outline">Save</button>
-                            <button type="button" class="text-sm bg-red-500 hover:bg-red-700 text-white py-1 px-2 rounded focus:outline-none focus:shadow-outline">Delete</button>
+                            <button wire:click="editUser({{ $user->id }})" type="button" class="mr-3 text-sm bg-blue-500 hover:bg-blue-700 text-white py-1 px-2 rounded focus:outline-none focus:shadow-outline">Edit</button>
+                            <button wire:click="confirmUserDeletion({{ $user->id }}) type="button" class="text-sm bg-red-500 hover:bg-red-700 text-white py-1 px-2 rounded focus:outline-none focus:shadow-outline">Delete</button>
                         </td>
                     </tr>
                 @endforeach
@@ -73,5 +72,113 @@
     <div>
         {{ $users->links() }}
     </div>
-   
+
+    <!-- Create User Modal -->
+    <x-jet-dialog-modal wire:model="creatingUser">
+        <x-slot name="title">
+            Create User
+        </x-slot>
+
+        <x-slot name="content">
+              <!-- Name -->
+            <div class="mt-4">
+                <x-jet-label for="name" value="{{ __('Name') }}" />
+                <x-jet-input id="name" type="text" class="mt-1 block w-full" wire:model.defer="createUserForm.name" autocomplete="name" />
+                <x-jet-input-error for="name" class="mt-2" />
+            </div>
+
+            <!-- Email -->
+            <div class="mt-4">
+                <x-jet-label for="email" value="{{ __('Email') }}" />
+                <x-jet-input id="email" type="email" class="mt-1 block w-full" wire:model.defer="createUserForm.email" />
+                <x-jet-input-error for="email" class="mt-2" />
+            </div>
+
+            <div class="mt-4">
+                <x-jet-label value="{{ __('Password') }}" />
+                <x-jet-input class="block mt-1 w-full" type="password" name="password" wire:model.defer="createUserForm.password" required autocomplete="new-password" />
+                <x-jet-input-error for="password" class="mt-2" />
+            </div>
+
+            <div class="mt-4">
+                <x-jet-label value="{{ __('Confirm Password') }}" />
+                <x-jet-input class="block mt-1 w-full" type="password" name="password_confirmation" wire:model.defer="createUserForm.password_confirmation" required autocomplete="new-password" />
+                <x-jet-input-error for="password_confirmation" class="mt-2" />
+            </div>
+        </x-slot>
+
+        <x-slot name="footer">
+            <x-jet-secondary-button wire:click="resetForm" wire:loading.attr="disabled">
+                {{ __('Nevermind') }}
+            </x-jet-secondary-button>
+
+            <x-jet-button class="ml-2" wire:click="store" wire:loading.attr="disabled">
+                {{ __('Create') }}
+            </x-jet-button>
+        </x-slot>
+    </x-jet-dialog-modal>
+
+    <!-- Edit User Modal -->
+    <x-jet-dialog-modal wire:model="editingUser">
+        <x-slot name="title">
+            User Information
+        </x-slot>
+
+        <x-slot name="content">
+            <div x-data="{photoName: null, photoPreview: null}" class="col-span-6 sm:col-span-4">
+                <x-jet-label for="photo" value="{{ __('Photo') }}" />
+
+                <!-- Current Profile Photo -->
+                <div class="mt-2" x-show="! photoPreview">
+                    <!-- <img src="" alt="" class="rounded-full h-20 w-20 object-cover"> -->
+                    <img class="h-8 w-8 rounded-full object-cover" src="{{ $photo }}" alt="" />
+                </div>
+            </div>
+
+            <!-- Name -->
+            <div class="col-span-6 sm:col-span-4">
+                <x-jet-label for="name" value="{{ __('Name') }}" />
+                <x-jet-input id="name" type="text" class="mt-1 block w-full" wire:model.defer="editUserForm.name" autocomplete="name" />
+                <x-jet-input-error for="name" class="mt-2" />
+            </div>
+
+            <!-- Email -->
+            <div class="col-span-6 sm:col-span-4">
+                <x-jet-label for="email" value="{{ __('Email') }}" />
+                <x-jet-input id="email" type="email" class="mt-1 block w-full" wire:model.defer="editUserForm.email" />
+                <x-jet-input-error for="email" class="mt-2" />
+            </div>
+        </x-slot>
+
+        <x-slot name="footer">
+            <x-jet-secondary-button wire:click="$set('editingUser', false)" wire:loading.attr="disabled">
+                {{ __('Nevermind') }}
+            </x-jet-secondary-button>
+
+            <x-jet-button class="ml-2" wire:click="updateUser" wire:loading.attr="disabled">
+                {{ __('Save') }}
+            </x-jet-button>
+        </x-slot>
+    </x-jet-dialog-modal>
+
+    <!-- Delete User Confirmation Modal -->
+    <x-jet-confirmation-modal wire:model="confirmingUserDeletion">
+        <x-slot name="title">
+            Delete User
+        </x-slot>
+
+        <x-slot name="content">
+            Are you sure you would like to delete this user?
+        </x-slot>
+
+        <x-slot name="footer">
+            <x-jet-secondary-button wire:click="$toggle('confirmingUserDeletion')" wire:loading.attr="disabled">
+                {{ __('Nevermind') }}
+            </x-jet-secondary-button>
+
+            <x-jet-danger-button class="ml-2" wire:click="deleteUser" wire:loading.attr="disabled">
+                {{ __('Delete') }}
+            </x-jet-danger-button>
+        </x-slot>
+    </x-jet-confirmation-modal>
 </div>
